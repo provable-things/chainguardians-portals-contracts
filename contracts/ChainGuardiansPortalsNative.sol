@@ -24,7 +24,7 @@ contract ChainGuardiansPortalsNative is ERC721HolderUpgradeable, IERC777Recipien
     address public chainGuardiansPortalsHost;
     uint256 public minTokenAmountToPegIn;
 
-    event Minted(uint256 id, address to);
+    event Wrapped(uint256 id, address to);
     event MinTokenAmountToPegInChanged(uint256 minTokenAmountToPegIn);
     event ChainGuardiansPortalsHostChanged(address chainGuardiansPortalsHost);
     event ERC777Changed(address erc777);
@@ -88,7 +88,7 @@ contract ChainGuardiansPortalsNative is ERC721HolderUpgradeable, IERC777Recipien
         bytes memory data = abi.encode(_tokenId, _to);
         IERC20(erc777).safeApprove(vault, minTokenAmountToPegIn);
         IPERC20Vault(vault).pegIn(minTokenAmountToPegIn, erc777, Utils.toAsciiString(chainGuardiansPortalsHost), data);
-        emit Minted(_tokenId, _to);
+        emit Wrapped(_tokenId, _to);
         return true;
     }
 }

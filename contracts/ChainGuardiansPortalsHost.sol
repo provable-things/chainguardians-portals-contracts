@@ -16,7 +16,7 @@ contract ChainGuardiansPortalsHost is ERC721Upgradeable, IERC777RecipientUpgrade
     address public pToken;
     address public chainGuardiansPortalsNative;
 
-    event Burned(uint256 id, address to);
+    event Unwrapped(uint256 id, address to);
     event ChainGuardiansPortalsNativeChanged(address chainGuardiansPortalsNative);
     event PtokenChanged(address pToken);
 
@@ -75,7 +75,7 @@ contract ChainGuardiansPortalsHost is ERC721Upgradeable, IERC777RecipientUpgrade
         _burn(_tokenId);
         bytes memory data = abi.encode(_tokenId, _to);
         IPToken(pToken).redeem(0, data, Utils.toAsciiString(chainGuardiansPortalsNative));
-        emit Burned(_tokenId, _to);
+        emit Unwrapped(_tokenId, _to);
         return true;
     }
 }

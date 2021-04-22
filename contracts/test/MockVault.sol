@@ -16,7 +16,7 @@ contract MockVault is IERC777Recipient {
 
     address public PNETWORK;
 
-    event Minted(address _tokenAddress, address _tokenSender, uint256 _tokenAmount, string _destinationAddress, bytes _userData);
+    event Wrapped(address _tokenAddress, address _tokenSender, uint256 _tokenAmount, string _destinationAddress, bytes _userData);
 
     constructor(address _pnetwork) {
         PNETWORK = _pnetwork;
@@ -37,7 +37,7 @@ contract MockVault is IERC777Recipient {
             require(amount > 0, "Token amount must be greater than zero!");
             (bytes32 tag, string memory _destinationAddress) = abi.decode(userData, (bytes32, string));
             require(tag == keccak256("ERC777-pegIn"), "Invalid tag for automatic pegIn on ERC777 send");
-            emit Minted(_tokenAddress, from, amount, _destinationAddress, userData);
+            emit Wrapped(_tokenAddress, from, amount, _destinationAddress, userData);
         }
     }
 
@@ -49,7 +49,7 @@ contract MockVault is IERC777Recipient {
     ) external returns (bool) {
         require(_tokenAmount > 0, "Token amount must be greater than zero!");
         IERC20(_tokenAddress).safeTransferFrom(msg.sender, address(this), _tokenAmount);
-        emit Minted(_tokenAddress, msg.sender, _tokenAmount, _destinationAddress, _userData);
+        emit Wrapped(_tokenAddress, msg.sender, _tokenAmount, _destinationAddress, _userData);
         return true;
     }
 

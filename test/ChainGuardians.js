@@ -197,7 +197,7 @@ describe('ChainGuardians (ChainGuardiansPortalsNative and ChainGuardiansPortalsH
     // P E G   I N
     await cgt.approve(chainGuardiansPortalsNative.address, TOKEN_ID)
     await expect(chainGuardiansPortalsNative.wrap(TOKEN_ID, account2.address))
-      .to.emit(chainGuardiansPortalsNative, 'Minted')
+      .to.emit(chainGuardiansPortalsNative, 'Wrapped')
       .withArgs(0, account2.address)
 
     // at this point let's suppose that a pNetwork node processes the pegin...
@@ -215,7 +215,7 @@ describe('ChainGuardians (ChainGuardiansPortalsNative and ChainGuardiansPortalsH
     // P E G   O U T
     const chainGuardiansPortalsHostAccount2 = chainGuardiansPortalsHost.connect(account2)
     await expect(chainGuardiansPortalsHostAccount2.unwrap(TOKEN_ID, owner.address))
-      .to.emit(chainGuardiansPortalsHostAccount2, 'Burned')
+      .to.emit(chainGuardiansPortalsHostAccount2, 'Unwrapped')
       .withArgs(TOKEN_ID, owner.address)
     expect(await chainGuardiansPortalsHost.balanceOf(account2.address)).to.be.equal(0)
 

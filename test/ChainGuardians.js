@@ -187,8 +187,6 @@ describe('ChainGuardians (ChainGuardiansPortalsNative and ChainGuardiansPortalsH
   it('should be able to wrap and unwrap', async () => {
     await cgt.create(TOKEN_ID, ATTRIBUTES.length, ATTRIBUTES, owner.address)
 
-    console.log(await cgt.tokenURI(0))
-
     const peginData = encode(['uint256', 'address'], [TOKEN_ID, account2.address])
     const pegoutData = encode(['uint256', 'address'], [TOKEN_ID, owner.address])
     const initialBalance = await cgt.balanceOf(owner.address)

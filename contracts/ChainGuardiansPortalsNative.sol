@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721HolderUpgradeable
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC777/IERC777RecipientUpgradeable.sol";
 import "@openzeppelin/contracts/introspection/IERC1820Registry.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 import "./interfaces/IVault.sol";
 import "./interfaces/IChainGuardiansToken.sol";
 import "./lib/Utils.sol";
@@ -71,7 +72,7 @@ contract ChainGuardiansPortalsNative is ERC721HolderUpgradeable, IERC777Recipien
         address _cgt,
         address _transportToken,
         address _vault
-    ) public {
+    ) public initializer {
         cgt = IChainGuardiansToken(_cgt);
         transportToken = IERC20(_transportToken);
         vault = IVault(_vault);

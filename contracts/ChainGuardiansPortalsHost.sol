@@ -5,11 +5,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC777/IERC777RecipientUpgrade
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/introspection/IERC1820Registry.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/Initializable.sol";
 import "./lib/Utils.sol";
 import "./interfaces/IPToken.sol";
 import "./interfaces/IChainGuardiansStorage.sol";
-
-import "hardhat/console.sol";
 
 
 contract ChainGuardiansPortalsHost is ERC721Upgradeable, IERC777RecipientUpgradeable, OwnableUpgradeable {
@@ -79,7 +78,7 @@ contract ChainGuardiansPortalsHost is ERC721Upgradeable, IERC777RecipientUpgrade
         address _pToken,
         string memory _baseUri,
         address _cgtStorage
-    ) public {
+    ) public initializer {
         pToken = IPToken(_pToken);
         cgtStorage = IChainGuardiansStorage(_cgtStorage);
         _erc1820 = IERC1820Registry(0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24);
@@ -88,7 +87,6 @@ contract ChainGuardiansPortalsHost is ERC721Upgradeable, IERC777RecipientUpgrade
         __ERC721_init("ChainGuardiansToken", "CGT");
         _setBaseURI(_baseUri);
     }
-
 
     function unwrap(uint256 _tokenId, address _to) public returns (bool) {
         require(ownerOf(_tokenId) == msg.sender, "ChainGuardiansPortalsHost: impossible to burn a token you don't own");

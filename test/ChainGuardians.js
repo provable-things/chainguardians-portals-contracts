@@ -13,6 +13,7 @@ let chainGuardiansPortalsNative,
   owner,
   account1,
   account2,
+  account3,
   pnetwork,
   nativeToken,
   vault,
@@ -50,6 +51,7 @@ describe('ChainGuardians (ChainGuardiansPortalsNative and ChainGuardiansPortalsH
 
     // NOTE: host blockchain (evm compatible) accounts
     account2 = accounts[3]
+    account3 = accounts[4]
 
     await singletons.ERC1820Registry(owner)
 
@@ -234,6 +236,9 @@ describe('ChainGuardians (ChainGuardiansPortalsNative and ChainGuardiansPortalsH
       .withArgs('0x0000000000000000000000000000000000000000', account2.address, TOKEN_ID)
     expect(await chainGuardiansPortalsHost.balanceOf(account2.address)).to.be.equal(1)
 
+    const tokenUri = await chainGuardiansPortalsHost.tokenURI(TOKEN_ID)
+    expect(tokenUri).to.be.equal(`${BASE_URI}${TOKEN_ID}`)
+
     // P E G   O U T
     const chainGuardiansPortalsHostAccount2 = chainGuardiansPortalsHost.connect(account2)
     await expect(chainGuardiansPortalsHostAccount2.unwrap(TOKEN_ID, owner.address))
@@ -299,6 +304,22 @@ describe('ChainGuardians (ChainGuardiansPortalsNative and ChainGuardiansPortalsH
     await expect(pToken.send(chainGuardiansPortalsHost.address, 1000, '0x')).to.not.emit(
       chainGuardiansPortalsHost,
       'Transfer'
+    )
+  })
+
+  it("should not be able to unwrap a token that you don' own", async () => {
+    const peginData = encode(['uint256', 'uint256', 'address'], [TOKEN_ID, ATTRIBUTES, account2.address])
+    const enclavePeginMetadata = encode(
+      ['bytes1', 'bytes', 'bytes4', 'address'],
+      ['0x01', peginData, PROVABLE_CHAIN_IDS.bscMainnet, chainGuardiansPortalsNative.address]
+    )
+
+    await cgt.approve(chainGuardiansPortalsNative.address, TOKEN_ID)
+    await chainGuardiansPortalsNative.wrap(TOKEN_ID, account2.address)
+
+    await pToken.connect(pnetwork).mint(chainGuardiansPortalsHost.address, BN(1, 10), enclavePeginMetadata, '0x')
+    await expect(chainGuardiansPortalsHost.connect(account3).unwrap(TOKEN_ID, owner.address)).to.be.revertedWith(
+      "ChainGuardiansPortalsHost: impossible to burn a token you don't own"
     )
   })
 })

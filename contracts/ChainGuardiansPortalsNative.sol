@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721HolderUpgradeable
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC777/IERC777RecipientUpgradeable.sol";
 import "@openzeppelin/contracts/introspection/IERC1820Registry.sol";
-import "./interfaces/IPERC20Vault.sol";
+import "./interfaces/IVault.sol";
 import "./interfaces/IChainGuardiansToken.sol";
 import "./lib/Utils.sol";
 
@@ -20,7 +20,7 @@ contract ChainGuardiansPortalsNative is ERC721HolderUpgradeable, IERC777Recipien
 
     IChainGuardiansToken public cgt;
     IERC20 public transportToken;
-    IPERC20Vault public vault;
+    IVault public vault;
     address public chainGuardiansPortalsHost;
     uint256 public minTokenAmountToPegIn;
 
@@ -46,7 +46,7 @@ contract ChainGuardiansPortalsNative is ERC721HolderUpgradeable, IERC777Recipien
     }
 
     function setVault(address _vault) external onlyOwner {
-        vault = IPERC20Vault(_vault);
+        vault = IVault(_vault);
         emit VaultChanged(_vault);
     }
 
@@ -74,7 +74,7 @@ contract ChainGuardiansPortalsNative is ERC721HolderUpgradeable, IERC777Recipien
     ) public {
         cgt = IChainGuardiansToken(_cgt);
         transportToken = IERC20(_transportToken);
-        vault = IPERC20Vault(_vault);
+        vault = IVault(_vault);
         _erc1820 = IERC1820Registry(0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24);
         _erc1820.setInterfaceImplementer(address(this), TOKENS_RECIPIENT_INTERFACE_HASH, address(this));
         __ERC721Holder_init();

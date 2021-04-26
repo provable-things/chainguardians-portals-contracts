@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.7.0;
 
-interface IPERC20Vault {
+interface IVault {
     function pegIn(
         uint256 _tokenAmount,
         address _tokenAddress,

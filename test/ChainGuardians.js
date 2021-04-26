@@ -8,7 +8,8 @@ use(solidity)
 let chainGuardiansPortalsNative,
   chainGuardiansPortalsHost,
   cgt,
-  cgtStorage,
+  cgtStorageNative,
+  cgtStorageHost,
   owner,
   account1,
   account2,
@@ -28,8 +29,8 @@ const PROVABLE_CHAIN_IDS = {
   bscMainnet: '0x00e4b170',
 }
 
-const TOKEN_ID = 0
-const ATTRIBUTES = [0, 2]
+const TOKEN_ID = 1
+const ATTRIBUTES = 12345678
 const BASE_URI = 'https://api.chainguardians.io/api/opensea/'
 
 describe('ChainGuardians (ChainGuardiansPortalsNative and ChainGuardiansPortalsHost)', () => {
@@ -55,12 +56,13 @@ describe('ChainGuardians (ChainGuardiansPortalsNative and ChainGuardiansPortalsH
     vault = await MockVault.deploy(pnetwork.address)
     nativeToken = await Standard777Token.deploy('Native Token', 'NTKN')
     pToken = await MockPToken.deploy('Host Token (pToken)', 'HTKN', [], pnetwork.address)
-    cgtStorage = await ChainGuardiansStorage.deploy()
-    cgt = await ChainGuardiansToken.deploy(cgtStorage.address, BASE_URI)
+    cgtStorageNative = await ChainGuardiansStorage.deploy()
+    cgtStorageHost = await ChainGuardiansStorage.deploy()
+    cgt = await ChainGuardiansToken.deploy(cgtStorageNative.address, BASE_URI)
 
     chainGuardiansPortalsHost = await upgrades.deployProxy(
       ChainGuardiansPortalsHost,
-      [pToken.address, 'Chain Guardians Token', 'CGT', BASE_URI],
+      [pToken.address, BASE_URI, cgtStorageHost.address],
       {
         initializer: 'initialize',
       }
@@ -78,7 +80,11 @@ describe('ChainGuardians (ChainGuardiansPortalsNative and ChainGuardiansPortalsH
     await chainGuardiansPortalsNative.setMinTokenAmountToPegIn(BN(1, 18))
     await nativeToken.send(pnetwork.address, BN(1000, 10), '0x')
     await nativeToken.send(chainGuardiansPortalsNative.address, BN(1000, 18), '0x')
-    await cgtStorage.transferOwnership(cgt.address)
+    await cgtStorageNative.transferOwnership(cgt.address)
+    await cgtStorageHost.transferOwnership(chainGuardiansPortalsHost.address)
+    await chainGuardiansPortalsNative.setChainGuardiansPortalsHost(chainGuardiansPortalsHost.address)
+    await chainGuardiansPortalsHost.setChainGuardiansPortalsNative(chainGuardiansPortalsNative.address)
+    await cgt.create(TOKEN_ID, ATTRIBUTES, [], owner.address)
   })
 
   it('should be able to set minimum amount to pegin', async () => {
@@ -88,10 +94,9 @@ describe('ChainGuardians (ChainGuardiansPortalsNative and ChainGuardiansPortalsH
   })
 
   it('should not be able to set minimum amount to pegin', async () => {
-    const chainGuardiansNativeAccount1 = chainGuardiansPortalsNative.connect(account1)
-    await expect(chainGuardiansNativeAccount1.setMinTokenAmountToPegIn(BN(0.05, 18))).to.be.revertedWith(
-      'Ownable: caller is not the owner'
-    )
+    await expect(
+      chainGuardiansPortalsNative.connect(account1).setMinTokenAmountToPegIn(BN(0.05, 18))
+    ).to.be.revertedWith('Ownable: caller is not the owner')
   })
 
   it('should be able to set chainGuardiansPortalsHost', async () => {
@@ -109,11 +114,11 @@ describe('ChainGuardians (ChainGuardiansPortalsNative and ChainGuardiansPortalsH
     )
   })
 
-  it('should be able to set erc777', async () => {
-    const erc777 = '0x0000000000000000000000000000000000004321'
-    await expect(chainGuardiansPortalsNative.setERC777(erc777))
-      .to.emit(chainGuardiansPortalsNative, 'ERC777Changed')
-      .withArgs(erc777)
+  it('should be able to set transportToken', async () => {
+    const transportToken = '0x0000000000000000000000000000000000004321'
+    await expect(chainGuardiansPortalsNative.setTransportToken(transportToken))
+      .to.emit(chainGuardiansPortalsNative, 'TransportTokenChaged')
+      .withArgs(transportToken)
   })
 
   it('should be able to set vault', async () => {
@@ -123,16 +128,18 @@ describe('ChainGuardians (ChainGuardiansPortalsNative and ChainGuardiansPortalsH
       .withArgs(newVault)
   })
 
-  it('should not be able to set erc777', async () => {
-    const erc777 = '0x0000000000000000000000000000000000004321'
-    const chainGuardiansNativeAccount1 = chainGuardiansPortalsNative.connect(account1)
-    await expect(chainGuardiansNativeAccount1.setERC777(erc777)).to.be.revertedWith('Ownable: caller is not the owner')
+  it('should not be able to set transportToken', async () => {
+    const transportToken = '0x0000000000000000000000000000000000004321'
+    await expect(chainGuardiansPortalsNative.connect(account1).setTransportToken(transportToken)).to.be.revertedWith(
+      'Ownable: caller is not the owner'
+    )
   })
 
   it('should not be able to set vault', async () => {
     const newVault = '0x0000000000000000000000000000000000004444'
-    const chainGuardiansNativeAccount1 = chainGuardiansPortalsNative.connect(account1)
-    await expect(chainGuardiansNativeAccount1.setVault(newVault)).to.be.revertedWith('Ownable: caller is not the owner')
+    await expect(chainGuardiansPortalsNative.connect(account1).setVault(newVault)).to.be.revertedWith(
+      'Ownable: caller is not the owner'
+    )
   })
 
   it('should be able to set baseUri', async () => {
@@ -141,8 +148,9 @@ describe('ChainGuardians (ChainGuardiansPortalsNative and ChainGuardiansPortalsH
   })
 
   it('should not be able to set baseUri', async () => {
-    const chainGuardiansHostAccount1 = chainGuardiansPortalsHost.connect(account1)
-    await expect(chainGuardiansHostAccount1.setBaseURI('hello')).to.be.revertedWith('Ownable: caller is not the owner')
+    await expect(chainGuardiansPortalsHost.connect(account1).setBaseURI('hello')).to.be.revertedWith(
+      'Ownable: caller is not the owner'
+    )
   })
 
   it('should be able to set pToken', async () => {
@@ -154,14 +162,27 @@ describe('ChainGuardians (ChainGuardiansPortalsNative and ChainGuardiansPortalsH
 
   it('should not be able to set pToken', async () => {
     const pToken = '0x0000000000000000000000000000000000004321'
-    const chainGuardiansHostAccount1 = chainGuardiansPortalsHost.connect(account1)
-    await expect(chainGuardiansHostAccount1.setPtoken(pToken)).to.be.revertedWith('Ownable: caller is not the owner')
+    await expect(chainGuardiansPortalsHost.connect(account1).setPtoken(pToken)).to.be.revertedWith(
+      'Ownable: caller is not the owner'
+    )
+  })
+
+  it('should be able to set cgtStorage', async () => {
+    const cgtStorageMod = '0x0000000000000000000000000000000000004321'
+    await expect(chainGuardiansPortalsHost.setCgtStorage(cgtStorageMod))
+      .to.emit(chainGuardiansPortalsHost, 'CgtStorageChanged')
+      .withArgs(cgtStorageMod)
+  })
+
+  it('should not be able to set cgtStorage', async () => {
+    const cgtStorageMod = '0x0000000000000000000000000000000000004321'
+    await expect(chainGuardiansPortalsHost.connect(account1).setCgtStorage(cgtStorageMod)).to.be.revertedWith(
+      'Ownable: caller is not the owner'
+    )
   })
 
   it('should be able to retrieve minAmountToPegIn and chainGuardiansPortalsHost after a contract upgrade', async () => {
     await chainGuardiansPortalsNative.setMinTokenAmountToPegIn(BN(0.05, 18))
-    await chainGuardiansPortalsNative.setChainGuardiansPortalsHost(chainGuardiansPortalsHost.address)
-    await chainGuardiansPortalsHost.setChainGuardiansPortalsNative(chainGuardiansPortalsNative.address)
     const ChainGuardiansPortalsNative = await ethers.getContractFactory('ChainGuardiansPortalsNative')
     const testNativePortalsNativeUpgraded = await upgrades.upgradeProxy(
       chainGuardiansPortalsNative.address,
@@ -185,29 +206,30 @@ describe('ChainGuardians (ChainGuardiansPortalsNative and ChainGuardiansPortalsH
   })
 
   it('should be able to wrap and unwrap', async () => {
-    await cgt.create(TOKEN_ID, ATTRIBUTES.length, ATTRIBUTES, owner.address)
+    const peginData = encode(['uint256', 'uint256', 'address'], [TOKEN_ID, ATTRIBUTES, account2.address])
+    const pegoutData = encode(['uint256', 'uint256', 'address'], [TOKEN_ID, ATTRIBUTES, owner.address])
+    const enclavePeginMetadata = encode(
+      ['bytes1', 'bytes', 'bytes4', 'address'],
+      ['0x01', peginData, PROVABLE_CHAIN_IDS.bscMainnet, chainGuardiansPortalsNative.address]
+    )
+    const enclavePegoutMetadata = encode(
+      ['bytes1', 'bytes', 'bytes4', 'address'],
+      ['0x01', pegoutData, PROVABLE_CHAIN_IDS.bscMainnet, chainGuardiansPortalsHost.address]
+    )
 
-    const peginData = encode(['uint256', 'address'], [TOKEN_ID, account2.address])
-    const pegoutData = encode(['uint256', 'address'], [TOKEN_ID, owner.address])
     const initialBalance = await cgt.balanceOf(owner.address)
-
-    await chainGuardiansPortalsNative.setChainGuardiansPortalsHost(chainGuardiansPortalsHost.address)
-    await chainGuardiansPortalsHost.setChainGuardiansPortalsNative(chainGuardiansPortalsNative.address)
 
     // P E G   I N
     await cgt.approve(chainGuardiansPortalsNative.address, TOKEN_ID)
     await expect(chainGuardiansPortalsNative.wrap(TOKEN_ID, account2.address))
       .to.emit(chainGuardiansPortalsNative, 'Wrapped')
-      .withArgs(0, account2.address)
+      .withArgs(TOKEN_ID, account2.address)
 
     // at this point let's suppose that a pNetwork node processes the pegin...
 
-    const hostTokenPnetwork = pToken.connect(pnetwork)
-    const enclavePeginMetadata = encode(
-      ['bytes1', 'bytes', 'bytes4', 'address'],
-      ['0x01', peginData, PROVABLE_CHAIN_IDS.bscMainnet, chainGuardiansPortalsNative.address]
+    await expect(
+      pToken.connect(pnetwork).mint(chainGuardiansPortalsHost.address, BN(1, 10), enclavePeginMetadata, '0x')
     )
-    await expect(hostTokenPnetwork.mint(chainGuardiansPortalsHost.address, BN(1, 10), enclavePeginMetadata, '0x'))
       .to.emit(chainGuardiansPortalsHost, 'Transfer')
       .withArgs('0x0000000000000000000000000000000000000000', account2.address, TOKEN_ID)
     expect(await chainGuardiansPortalsHost.balanceOf(account2.address)).to.be.equal(1)
@@ -219,38 +241,57 @@ describe('ChainGuardians (ChainGuardiansPortalsNative and ChainGuardiansPortalsH
       .withArgs(TOKEN_ID, owner.address)
     expect(await chainGuardiansPortalsHost.balanceOf(account2.address)).to.be.equal(0)
 
-    const vaultPnetwork = vault.connect(pnetwork)
-    const enclavePegoutMetadata = encode(
-      ['bytes1', 'bytes', 'bytes4', 'address'],
-      ['0x01', pegoutData, PROVABLE_CHAIN_IDS.bscMainnet, chainGuardiansPortalsHost.address]
-    )
-    await vaultPnetwork.pegOut(
-      chainGuardiansPortalsNative.address,
-      nativeToken.address,
-      TOKEN_ID,
-      enclavePegoutMetadata
-    )
+    await vault
+      .connect(pnetwork)
+      .pegOut(chainGuardiansPortalsNative.address, nativeToken.address, TOKEN_ID, enclavePegoutMetadata)
     expect(await cgt.balanceOf(owner.address)).to.be.equal(initialBalance)
   })
 
   it('should not be able to mint on the host blockchain if the originating address is not the correct one', async () => {
-    await cgt.create(TOKEN_ID, ATTRIBUTES.length, ATTRIBUTES, owner.address)
-    const peginData = encode(['uint256', 'address', 'string'], [TOKEN_ID, account2.address, BASE_URI])
+    const peginData = encode(['uint256', 'uint256', 'address'], [TOKEN_ID, ATTRIBUTES, account2.address])
+    const enclavePeginMetadata = encode(
+      ['bytes1', 'bytes', 'bytes4', 'address'],
+      ['0x01', peginData, PROVABLE_CHAIN_IDS.bscMainnet, account2.address]
+    )
 
     // NOTE: an user calls pegin with correct metadata without using native portals contract
     await nativeToken.approve(vault.address, BN(1000, 18))
     await vault.pegIn(BN(1000, 18), nativeToken.address, chainGuardiansPortalsHost.address.toLowerCase(), '0x')
 
-    // NOTE: at this point let's suppose that a pNetwork node processes the pegin...
+    await expect(
+      pToken.connect(pnetwork).mint(chainGuardiansPortalsHost.address, BN(1, 10), enclavePeginMetadata, '0x')
+    ).to.be.revertedWith('ChainGuardiansPortalsHost: Invalid originating address')
+  })
 
-    const hostTokenPnetwork = pToken.connect(pnetwork)
+  it('should be able to wrap and unwrap with an attributes update on the host chain', async () => {
+    const updatedAttributes = 987654
+    const peginData = encode(['uint256', 'uint256', 'address'], [TOKEN_ID, ATTRIBUTES, account2.address])
+    const pegoutData = encode(['uint256', 'uint256', 'address'], [TOKEN_ID, updatedAttributes, owner.address])
     const enclavePeginMetadata = encode(
       ['bytes1', 'bytes', 'bytes4', 'address'],
-      ['0x01', peginData, PROVABLE_CHAIN_IDS.bscMainnet, account2.address]
+      ['0x01', peginData, PROVABLE_CHAIN_IDS.bscMainnet, chainGuardiansPortalsNative.address]
     )
-    await expect(
-      hostTokenPnetwork.mint(chainGuardiansPortalsHost.address, BN(1, 10), enclavePeginMetadata, '0x')
-    ).to.be.revertedWith('ChainGuardiansPortalsHost: Invalid originating address')
+    const enclavePegoutMetadata = encode(
+      ['bytes1', 'bytes', 'bytes4', 'address'],
+      ['0x01', pegoutData, PROVABLE_CHAIN_IDS.bscMainnet, chainGuardiansPortalsHost.address]
+    )
+
+    const initialBalance = await cgt.balanceOf(owner.address)
+
+    await cgt.approve(chainGuardiansPortalsNative.address, TOKEN_ID)
+    await chainGuardiansPortalsNative.wrap(TOKEN_ID, account2.address)
+
+    await pToken.connect(pnetwork).mint(chainGuardiansPortalsHost.address, BN(1, 10), enclavePeginMetadata, '0x')
+    await chainGuardiansPortalsHost.updateAttributes(TOKEN_ID, updatedAttributes, [])
+    const chainGuardiansPortalsHostAccount2 = chainGuardiansPortalsHost.connect(account2)
+    await chainGuardiansPortalsHostAccount2.unwrap(TOKEN_ID, owner.address)
+
+    await vault
+      .connect(pnetwork)
+      .pegOut(chainGuardiansPortalsNative.address, nativeToken.address, TOKEN_ID, enclavePegoutMetadata)
+
+    expect(await cgt.balanceOf(owner.address)).to.be.equal(initialBalance)
+    expect((await cgt.getProperties(TOKEN_ID))[0]).to.be.equal(updatedAttributes)
   })
 
   it('only pnetwork is able to mint tokens on the host blockchain', async () => {

@@ -2,13 +2,13 @@
 pragma solidity ^0.7.3;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721HolderUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC777/IERC777RecipientUpgradeable.sol";
 import "@openzeppelin/contracts/introspection/IERC1820Registry.sol";
 import "./interfaces/IPERC20Vault.sol";
+import "./interfaces/IChainGuardiansToken.sol";
 import "./lib/Utils.sol";
 
 
@@ -18,16 +18,16 @@ contract ChainGuardiansPortalsNative is ERC721HolderUpgradeable, IERC777Recipien
     IERC1820Registry private _erc1820;
     bytes32 private constant TOKENS_RECIPIENT_INTERFACE_HASH = keccak256("ERC777TokensRecipient");
 
-    address public cgt;
-    address public erc777;
-    address public vault;
+    IChainGuardiansToken public cgt;
+    IERC20 public transportToken;
+    IPERC20Vault public vault;
     address public chainGuardiansPortalsHost;
     uint256 public minTokenAmountToPegIn;
 
-    event Wrapped(uint256 id, address to);
+    event Wrapped(uint256 tokenId, address to);
     event MinTokenAmountToPegInChanged(uint256 minTokenAmountToPegIn);
     event ChainGuardiansPortalsHostChanged(address chainGuardiansPortalsHost);
-    event ERC777Changed(address erc777);
+    event TransportTokenChaged(address transportToken);
     event VaultChanged(address vault);
 
     function setMinTokenAmountToPegIn(uint256 _minTokenAmountToPegIn) external onlyOwner {
@@ -40,14 +40,14 @@ contract ChainGuardiansPortalsNative is ERC721HolderUpgradeable, IERC777Recipien
         emit ChainGuardiansPortalsHostChanged(chainGuardiansPortalsHost);
     }
 
-    function setERC777(address _erc777) external onlyOwner {
-        erc777 = _erc777;
-        emit ERC777Changed(erc777);
+    function setTransportToken(address _transportToken) external onlyOwner {
+        transportToken = IERC20(_transportToken);
+        emit TransportTokenChaged(_transportToken);
     }
 
     function setVault(address _vault) external onlyOwner {
-        vault = _vault;
-        emit VaultChanged(vault);
+        vault = IPERC20Vault(_vault);
+        emit VaultChanged(_vault);
     }
 
     function tokensReceived(
@@ -58,22 +58,23 @@ contract ChainGuardiansPortalsNative is ERC721HolderUpgradeable, IERC777Recipien
         bytes calldata _userData,
         bytes calldata /*_operatorData*/
     ) external override {
-        if (_msgSender() == erc777 && _from == vault) {
+        if (_msgSender() == address(transportToken) && _from == address(vault)) {
             (, bytes memory userData, , address originatingAddress) = abi.decode(_userData, (bytes1, bytes, bytes4, address));
             require(originatingAddress == chainGuardiansPortalsHost, "ChainGuardiansPortalsNative: Invalid originating address");
-            (uint256 id, address to) = abi.decode(userData, (uint256, address));
-            IERC721(cgt).safeTransferFrom(address(this), to, id);
+            (uint256 tokenId, uint256 attrs, address to) = abi.decode(userData, (uint256, uint256, address));
+            cgt.updateAttributes(tokenId, attrs, new uint256[](0));
+            cgt.safeTransferFrom(address(this), to, tokenId);
         }
     }
 
     function initialize(
         address _cgt,
-        address _erc777,
+        address _transportToken,
         address _vault
     ) public {
-        cgt = _cgt;
-        erc777 = _erc777;
-        vault = _vault;
+        cgt = IChainGuardiansToken(_cgt);
+        transportToken = IERC20(_transportToken);
+        vault = IPERC20Vault(_vault);
         _erc1820 = IERC1820Registry(0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24);
         _erc1820.setInterfaceImplementer(address(this), TOKENS_RECIPIENT_INTERFACE_HASH, address(this));
         __ERC721Holder_init();
@@ -81,13 +82,14 @@ contract ChainGuardiansPortalsNative is ERC721HolderUpgradeable, IERC777Recipien
     }
 
     function wrap(uint256 _tokenId, address _to) public returns (bool) {
-        IERC721(cgt).safeTransferFrom(_msgSender(), address(this), _tokenId);
-        if (IERC20(erc777).balanceOf(address(this)) < minTokenAmountToPegIn) {
-            IERC20(erc777).safeTransferFrom(_msgSender(), address(this), minTokenAmountToPegIn);
+        cgt.safeTransferFrom(_msgSender(), address(this), _tokenId);
+        if (transportToken.balanceOf(address(this)) < minTokenAmountToPegIn) {
+            transportToken.safeTransferFrom(_msgSender(), address(this), minTokenAmountToPegIn);
         }
-        bytes memory data = abi.encode(_tokenId, _to);
-        IERC20(erc777).safeApprove(vault, minTokenAmountToPegIn);
-        IPERC20Vault(vault).pegIn(minTokenAmountToPegIn, erc777, Utils.toAsciiString(chainGuardiansPortalsHost), data);
+        (uint256 attrs, ) = cgt.getProperties(_tokenId);
+        bytes memory data = abi.encode(_tokenId, attrs, _to);
+        transportToken.safeApprove(address(vault), minTokenAmountToPegIn);
+        vault.pegIn(minTokenAmountToPegIn, address(transportToken), Utils.toAsciiString(chainGuardiansPortalsHost), data);
         emit Wrapped(_tokenId, _to);
         return true;
     }

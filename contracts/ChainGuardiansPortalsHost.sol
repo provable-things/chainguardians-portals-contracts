@@ -84,7 +84,7 @@ contract ChainGuardiansPortalsHost is ERC721Upgradeable, IERC777RecipientUpgrade
         _erc1820 = IERC1820Registry(0x1820a4B7618BdE71Dce8cdc73aAB6C95905faD24);
         _erc1820.setInterfaceImplementer(address(this), TOKENS_RECIPIENT_INTERFACE_HASH, address(this));
         __Ownable_init();
-        __ERC721_init("ChainGuardiansToken", "CGT");
+        __ERC721_init("ChainGuardians (Portals)", "pCGT");
         _setBaseURI(_baseUri);
     }
 

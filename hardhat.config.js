@@ -3,6 +3,7 @@ require('@nomiclabs/hardhat-ethers')
 require('@openzeppelin/hardhat-upgrades')
 require('@nomiclabs/hardhat-etherscan')
 require('@nomiclabs/hardhat-waffle')
+require('hardhat-gas-reporter')
 
 const getEnvironmentVariable = (_envVar) =>
   process.env[_envVar]
@@ -46,20 +47,23 @@ module.exports = {
       url: `${getEnvironmentVariable('ETH_MAINNET_NODE')}`,
       accounts: [getEnvironmentVariable('MAINNET_PRIVATE_KEY')],
       gas: 4e6,
-      gasPrice: 280e9,
+      gasPrice: 45e9,
       websockets: true,
       timeout: 1000 * 60 * 20,
     },
     bsc: {
-      url: `${getEnvironmentVariable('BSC_MAINNET_NODE')}`,
+      url: getEnvironmentVariable('BSC_MAINNET_NODE'),
       accounts: [getEnvironmentVariable('BSC_MAINNET_PRIVATE_KEY')],
       gas: 3e6,
-      gasPrice: 10e9,
+      gasPrice: 7e9,
       websockets: true,
     },
   },
   etherscan: {
     apiKey: getEnvironmentVariable('ETHERSCAN_API_KEY'),
+  },
+  gasReporter: {
+    enabled: true,
   },
   mocha: {
     timeout: 200000,
